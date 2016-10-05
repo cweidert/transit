@@ -14,13 +14,13 @@ class Item:
 		return form % values
 
 class Bounds:
-	def __init__(self, x = 0, y = 0, width = 10, height = 10):
-		assert width >= 0
-		assert height >= 0
-		self._left = x
-		self._right = x + width
-		self._bottom = y
-		self._top = y + height
+	def __init__(self, left = 0, right = 10, bottom = 0, top = 10):
+		assert right >= left
+		assert top >= bottom
+		self._left = left
+		self._right = right
+		self._bottom = bottom
+		self._top = top
 
 	@property
 	def width(self):
@@ -47,17 +47,22 @@ class Bounds:
 		return self._right
 
 	def contains(self, item):
-		xOK = item.x > self._left and item.x < self._right
-		yOK = item.y > self._bottom and item.y < self._top
+		xOK = item.x >= self._left and item.x <= self._right
+		yOK = item.y >= self._bottom and item.y <= self._top
 		return xOK and yOK
 
 	def intersects(self, other):
-		xOver = other._left < self.right and other.right > self._left
-		yOver = other._top > self.bottom and other.bottom < self._top
+		xOver = other._left <= self.right and other.right >= self._left
+		yOver = other._top >= self.bottom and other.bottom <= self._top
 		return xOver and yOver
 
+	def __str__(self):
+		values = (self.left, self.right, self.bottom, self.top, self.width, self.height)
+		form = "(%f->%f, %f->%f) %f by %f"
+		return form % values
+
 class QuadTree:
-	MAX_CAPACITY = 5
+	MAX_CAPACITY = 4
 
 	def __init__(self, level = 0, rect = Bounds()):
 		self.subtrees = None
@@ -65,43 +70,47 @@ class QuadTree:
 		self.level = level
 		self.bounds = rect
 
-	def refill(self, li):
-		self.clear()
+	def getAllItems(self):
+		toRet = self.payload[:]
+
+		if self.subtrees is not None:
+			for subtree in self.subtrees:
+				toRet.extend(subtree.getAllItems())
+
+		return toRet
+
+	def rebound(self):
+		li = self.getAllItems()
+
+		xMin = min(li, key = lambda item: item.x).x
+		xMax = max(li, key = lambda item: item.x).x
+		yMin = min(li, key = lambda item: item.y).y
+		yMax = max(li, key = lambda item: item.y).y
+		self.bounds = Bounds(xMin, xMax, yMin, yMax)
+
 		self.subtrees = None
 		self.level = 0
 		self.payload = []
-		self.bounds = Bounds()
+
 		if len(li) > 0:
-			xMin = min(li, key = lambda item: item.x)
-			xMax = max(li, key = lambda item: item.x)
-			yMin = min(li, key = lambda item: item.y)
-			yMax = max(li, key = lambda item: item.y)
-			self.bounds = Bounds(xMin, yMin, xMax - xMin, yMax - yMin)
 			for ele in li:
 				self.insert(ele)
 
-	def clear(self):
-		self.payload = []
-		self.subtrees = None
 
 	def split(self):
 		if self.subtrees == None:
-			w = self.bounds.width / 2
-			h = self.bounds.height / 2
-			left = self.bounds.left
-			bottom = self.bounds.bottom
+			xMin = self.bounds.left
+			xMax = self.bounds.right
+			xMid = (xMin + xMax) / 2
+			yMin = self.bounds.bottom
+			yMax = self.bounds.top
+			yMid = (yMin + yMax) / 2
 			level = self.level + 1
-			tree1 = QuadTree(level, Bounds(left, bottom, w, h))
-			tree2 = QuadTree(level, Bounds(left, bottom + h, w, h))
-			tree3 = QuadTree(level, Bounds(left + w, bottom, w, h))
-			tree4 = QuadTree(level, Bounds(left + w, bottom + h, w, h))
+			tree1 = QuadTree(level, Bounds(xMin, xMid, yMin, yMid))
+			tree2 = QuadTree(level, Bounds(xMid, xMax, yMin, yMid))
+			tree3 = QuadTree(level, Bounds(xMin, xMid, yMid, yMax))
+			tree4 = QuadTree(level, Bounds(xMid, xMax, yMid, yMax))
 			self.subtrees = [tree1, tree2, tree3, tree4]
-
-			for ele in self.payload:
-				subtree = self.findSubtree(ele)
-				if subtree is not None:
-					subtree.insert(ele)
-					self.payload.remove(ele)
 
 	def findSubtree(self, item):
 		for subtree in self.subtrees:
@@ -110,23 +119,32 @@ class QuadTree:
 		return None
 
 	def insert(self, item):
-		if self.subtrees is not None:
-			subtree = self.findSubtree(item)
-			if subtree is None:
-				self.payload.append(item)
-			else:
-				subtree.insert(item)
-		else:
+		if not self.bounds.contains(item):
+			print(item.__str__() + " does not fit in " + self.bounds.__str__())
 			self.payload.append(item)
+			self.rebound()
+		else:
+			if self.subtrees is None:
+				self.payload.append(item)
 
-			if len(self.payload) > QuadTree.MAX_CAPACITY:
-				self.split()
+				if len(self.payload) > QuadTree.MAX_CAPACITY:
+					print(len(self.payload))
+					self.split()
+					itemsToInsert = self.payload[:]
+					for ele in itemsToInsert:
+						subtree = self.findSubtree(ele)
+						subtree.insert(ele)
+						self.payload.remove(ele)
+			else:
+				subtree = self.findSubtree(item)
+				subtree.insert(item)
+
 
 	def getPossibleHits(self, bounds):
 		toRet = []
 		toRet.extend(payload)
 
-		if self.subtrees is not Null:
+		if self.subtrees is not None:
 			for subtree in self.subtrees:
 				if subtree.intersects(bounds):
 					toRet.extend(subtree.getPossibleHits(bounds))
@@ -141,25 +159,30 @@ class QuadTree:
 	def __str__(self):
 		spacing = "\t" * self.level
 		pl = [item.__str__() for item in self.payload]
-		toRet = spacing + pl.__str__() + "\n"
+		toRet = spacing + self.bounds.__str__() + ": " + pl.__str__() + "\n"
 		if self.subtrees is not None:
 			toRet += "\n".join([sub.__str__() for sub in self.subtrees])
 		return toRet
 
 
-
 def randomPoint():
-	x = random.random() * 10
-	y = random.random() * 10
-	return x, y
+	return random.random() * 100, random.random() * 100
 
 def main():
 	qt = QuadTree()
-	for i in range(20):
+	for i in range(10):
 		x, y = randomPoint()
-		item = Item(i, i / 20, i / 20)
-		qt.insert(item)
-	print(qt)
+		qt.insert(Item(i, x, y))
+		print("----" + str(i) + "----")
+		print(qt)
+
+	"""
+	for x in range(10):
+		for y in range(10):
+			item = Item(i, x / 10, y / 10)
+			qt.insert(item)
+			i += 1
+	"""
 
 if __name__ == "__main__":
 	main()

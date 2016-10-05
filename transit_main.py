@@ -1,19 +1,15 @@
 #!/usr/bin/env python
-from schedule import Schedule
 
-BUS_PATH = "../data/metro/gtfs/bus"
-RAIL_PATH = "../data/metro/gtfs/rail"
-LACMA = (34.063053, -118.359211)
+import schedule
+import quad_tree
 
-
-def main():	
-	system = Schedule()
-	system.load_schedule(RAIL_PATH)
-	system.sort_stops()
-	close_stops = system.get_stops_near(LACMA, 5)
-	print([(stop.stop_lat, stop.stop_lon) for stop in close_stops])
-
-
+def main():
+	sched = schedule.Schedule()
+	sched.loadSchedule(schedule.RAIL_PATH)
+	tree = quad_tree.QuadTree()
+	for stopTime in sched.stopTimes.values():
+		tree.insert(quad_tree.Item(stopTime, stopTime.lon, stopTime.lat))
+	print(tree)
 
 if __name__ == "__main__":
 	main()

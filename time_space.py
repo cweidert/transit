@@ -1,11 +1,10 @@
 #!/usr/bin/env python
 
+import math
 from geopy.geocoders import Nominatim
 from geopy.distance import vincenty
 
-TRANSFER_PENALTY = 20
 WALKING_KM_PER_HOUR = 5
-MINUTE_PENALTY_PER_TRANSFER = 20
 
 class Finder:
 	@staticmethod
@@ -64,6 +63,12 @@ class Time:
 	def plus(self, other):
 		return Time(seconds = (self.secs + other.secs))
 
+	def before(self, other):
+		return self.diff(other).seconds < 0
+
+	def after(self, other):
+		return self.diff(other).seconds > 0
+
 	def __str__(self):
 		tot = self.secs
 		negative = False
@@ -84,10 +89,6 @@ class Place:
 	def __init__(self, lat, lon):
 		self.lat = lat;
 		self.lon = lon;
-
-	@property
-	def location(self):
-		return (self.lat, self.lon)
 
 	def distanceTo(self, other):
 		loc1 = (self.lat, self.lon)
@@ -123,14 +124,6 @@ class Travel:
 
 	def __str__(self):
 		return "%.3f km, %.1f min" % (self.distance.km, self.duration.minutes)
-
-class Bother:
-	def __init__(self, time, transfers = 0):
-		self.time = time
-		self.transfers = transfers
-
-	def penalty(self):
-		return self.time.minutes + self.transfers * TIME_PENALTY_PER_TRANSFER
 
 def main():
 	lacmaBrunch = TimePlace(Finder.findLatLon("Los Angeles County Museum of Art"), 8, 0)
