@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 from time_space import Place
+from time_space import Time
 
 RAIL_PATH = "../data/metro/gtfs/rail"
 
@@ -55,7 +56,7 @@ class Schedule:
 			lat = float(words[4])
 			lng = float(words[5])
 			parent_id = words[8] if len(words[8]) > 0 else None
-			stop = Stop(self, stop_id, name, lat, lng, parent_id)
+			stop = Stop(stop_id, name, lat, lng, parent_id)
 			self.stops[stop_id] = stop
 		f.close()
 
@@ -90,9 +91,8 @@ class Schedule:
 		f.close()
 
 class Stop(Place):
-	def __init__(self, sched, stop_id, name, lat, lon, parent = None):
+	def __init__(self, stop_id, name, lat, lon, parent = None):
 		super().__init__(lat, lon)
-		self.sched = sched
 		self.stop_id = stop_id
 		self.name = name
 		self.parent_id = parent
@@ -108,15 +108,19 @@ class Stop(Place):
 		values = (self.stop_id, self.name, self.location.__str__())
 		return "Stop %s: %s @ %s" % values
 
-class StopTime():
+class StopTime:
 	def __init__(self, stopTime_id, trip, stop, seq, headsign, arrival, departure):
 		self.stopTime_id = stopTime_id
 		self.trip = trip
 		self.stop = stop
 		self.seq = seq
 		self.headsign = headsign
-		self.arrivalTime = arrival
-		self.departureTime = departure
+		self.arrivalTime = Time.fromString(arrival)
+		self.departureTime = Time.fromString(departure)
+
+	@property
+	def location(self):
+		return self.stop.location
 
 	def onSameTrip(self, other):
 		return self.trip == other.trip
@@ -125,9 +129,12 @@ class StopTime():
 		arrive = self.arrivalTime
 		depart = self.departureTime
 		stopName = self.stop.name
+		seq = self.seq
 		routeName = self.trip.route.name
-		values = (routeName, self.headsign, self.seq, arrive, stopName)
-		return "%s --> %s \n\t(#%2d @ %s): %s" % values
+		headsign = self.headsign
+		loc = self.location
+		values = (routeName, headsign, seq, arrive, loc, stopName)
+		return "%s --> %s \n  [Stop #%2d @ %s]: %s %s" % values
 
 class Trip:
 	def __init__(self, trip_id, route, service_id, shape_id):

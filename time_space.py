@@ -38,6 +38,14 @@ class Time:
 		secs = seconds + minutes * 60 + hours * 60 * 60
 		self.secs = secs
 
+	@classmethod
+	def fromString(cls, strang):
+		words = strang.split(":")
+		hours = int(words[0])
+		minutes = int(words[1])
+		seconds = int(words[2])
+		return cls(hours, minutes, seconds)
+
 	@property
 	def seconds(self):
 		return self.secs
@@ -58,12 +66,19 @@ class Time:
 
 	def __str__(self):
 		tot = self.secs
-		hours = tot // (60 * 60)
-		tot -= hours * 60 * 60
+		negative = False
+		if (tot < 0):
+			tot = -tot
+			negative = True
+		hours = tot // 3600
+		tot %= 3600
 		minutes = tot // 60
-		tot -= minutes * 60
+		tot %= 60
 		seconds = tot
-		return "%02d:%02d:%02d" % (hours, minutes, seconds)
+		s = "%02d:%02d:%02d" % (hours, minutes, seconds)
+		if negative:
+			s = "-" + s
+		return s
 
 class Place:
 	def __init__(self, lat, lon):
