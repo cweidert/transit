@@ -95,7 +95,7 @@ class StopGraph(Graph):
 			print("%d of %d" % (i, len(stops)))
 			for dest in stops:
 				if self.__class__.areReasonableNeighbors(source, dest):
-					transfers = 1 if source.onSameRoute(dest) else 0
+					transfers = 0 if source.onSameRoute(dest) else 1
 					time = time_space.Time()
 					dist = source.distanceTo(dest)
 					penalty = Penalty(time, dist, transfers)
