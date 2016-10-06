@@ -120,7 +120,11 @@ class QuadTree:
 
 	def insert(self, item):
 		if not self.bounds.contains(item):
+<<<<<<< HEAD
 			# print(item.__str__() + " does not fit in " + self.bounds.__str__())
+=======
+			print(item.__str__() + " does not fit in " + self.bounds.__str__())
+>>>>>>> c2ed7a7d00df8fbd194c12ec993aa2f6bc81c3b2
 			self.payload.append(item)
 			self.rebound()
 		else:
@@ -128,6 +132,10 @@ class QuadTree:
 				self.payload.append(item)
 
 				if len(self.payload) > QuadTree.MAX_CAPACITY:
+<<<<<<< HEAD
+=======
+					print(len(self.payload))
+>>>>>>> c2ed7a7d00df8fbd194c12ec993aa2f6bc81c3b2
 					self.split()
 					itemsToInsert = self.payload[:]
 					for ele in itemsToInsert:
@@ -137,6 +145,7 @@ class QuadTree:
 			else:
 				subtree = self.findSubtree(item)
 				subtree.insert(item)
+<<<<<<< HEAD
 
 
 	def getPossibleHits(self, bounds):
@@ -182,5 +191,53 @@ def main():
 
 	#print(qt)
 
+=======
+
+
+	def getPossibleHits(self, bounds):
+		toRet = []
+		toRet.extend(payload)
+
+		if self.subtrees is not None:
+			for subtree in self.subtrees:
+				if subtree.intersects(bounds):
+					toRet.extend(subtree.getPossibleHits(bounds))
+
+		return toRet
+
+	def getOverlappers(self, bounds):
+		candidates = self.getPossibleHits(bounds)
+		toRet = [c for c in candidates if bounds.contains(candidate)]
+		return toRet
+
+	def __str__(self):
+		spacing = "\t" * self.level
+		pl = [item.__str__() for item in self.payload]
+		toRet = spacing + self.bounds.__str__() + ": " + pl.__str__() + "\n"
+		if self.subtrees is not None:
+			toRet += "\n".join([sub.__str__() for sub in self.subtrees])
+		return toRet
+
+
+def randomPoint():
+	return random.random() * 100, random.random() * 100
+
+def main():
+	qt = QuadTree()
+	for i in range(10):
+		x, y = randomPoint()
+		qt.insert(Item(i, x, y))
+		print("----" + str(i) + "----")
+		print(qt)
+
+	"""
+	for x in range(10):
+		for y in range(10):
+			item = Item(i, x / 10, y / 10)
+			qt.insert(item)
+			i += 1
+	"""
+
+>>>>>>> c2ed7a7d00df8fbd194c12ec993aa2f6bc81c3b2
 if __name__ == "__main__":
 	main()
