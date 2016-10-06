@@ -120,11 +120,7 @@ class QuadTree:
 
 	def insert(self, item):
 		if not self.bounds.contains(item):
-<<<<<<< HEAD
-			# print(item.__str__() + " does not fit in " + self.bounds.__str__())
-=======
 			print(item.__str__() + " does not fit in " + self.bounds.__str__())
->>>>>>> c2ed7a7d00df8fbd194c12ec993aa2f6bc81c3b2
 			self.payload.append(item)
 			self.rebound()
 		else:
@@ -132,10 +128,6 @@ class QuadTree:
 				self.payload.append(item)
 
 				if len(self.payload) > QuadTree.MAX_CAPACITY:
-<<<<<<< HEAD
-=======
-					print(len(self.payload))
->>>>>>> c2ed7a7d00df8fbd194c12ec993aa2f6bc81c3b2
 					self.split()
 					itemsToInsert = self.payload[:]
 					for ele in itemsToInsert:
@@ -145,7 +137,6 @@ class QuadTree:
 			else:
 				subtree = self.findSubtree(item)
 				subtree.insert(item)
-<<<<<<< HEAD
 
 
 	def getPossibleHits(self, bounds):
@@ -171,28 +162,6 @@ class QuadTree:
 		if self.subtrees is not None:
 			toRet += "\n".join([sub.__str__() for sub in self.subtrees])
 		return toRet
-
-
-def randomPoint():
-	return random.random() * 100, random.random() * 100
-
-def main():
-	import datetime
-	import schedule
-
-	sched = schedule.Schedule()
-	sched.loadSchedule(schedule.BUS_PATH)
-
-	qt = QuadTree()
-	date = datetime.date(2016, 10, 5)
-	for i, stop in enumerate(sched.getStops(date)):
-		print(i, stop)
-		qt.insert(Item(stop, stop.latitude, stop.longitude))
-
-	#print(qt)
-
-=======
-
 
 	def getPossibleHits(self, bounds):
 		toRet = []
@@ -238,6 +207,5 @@ def main():
 			i += 1
 	"""
 
->>>>>>> c2ed7a7d00df8fbd194c12ec993aa2f6bc81c3b2
 if __name__ == "__main__":
 	main()

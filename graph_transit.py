@@ -23,7 +23,7 @@ class Bother:
 		else:
 			minutePenalty = self.time.minutes
 			distancePenalty = self.distance * MINUTES_PER_KM
-			# if we don't transfer, no dist penalty
+			# if we don't transfer, no distance penalty
 			distancePenalty *= self.transfers
 			transferPenalty = self.transfers * MINUTE_PENALTY_PER_TRANSFER
 
