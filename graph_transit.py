@@ -66,14 +66,14 @@ class Graph:
 		self.vertices[source][dest] = penalty
 
 	def neighborString(self, source):
-		edges = self.vertices[source]
+		es = self.vertices[source]
 		form = "\t%s: %s"
-		return "\n".join([form % (edges[n].__str__(), n.name) for n in edges.keys()])
+		return "\n".join([form % (es[n].__str__(), n.name) for n in es.keys()])
 
 	def __str__(self):
-		verts = self.vertices.keys()
+		vs = self.vertices.keys()
 		form = "%s\n%s\n"
-		return "\n".join([form % (v.name, self.neighborString(v)) for v in verts])
+		return "\n".join([form % (v.name, self.neighborString(v)) for v in vs])
 
 class StopGraph(Graph):
 	def __init__(self):
@@ -113,9 +113,10 @@ class StopGraph(Graph):
 
 def main():
 	import datetime
-
+	import sys
 	sched = schedule.Schedule()
 	sched.loadSchedule(schedule.RAIL_PATH)
+	sched.finish()
 	print("----rail loaded----")
 	#sched.loadSchedule(schedule.BUS_PATH)
 	#print("----buses loaded----")
