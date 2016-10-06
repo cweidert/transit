@@ -52,12 +52,18 @@ class Bother:
 		form = "%.1f min, %.1f km, %d transfer(s): %.1f penalty"
 		return form % values
 
-class StopGraph:
+class Graph:
 	def __init__(self):
 		self.vertices = {}
 
 	def addVertex(self, stop):
-		self.vertices[stop] = Vertex()
+		self.vertices[stop] = {}
+
+	def addEdge(self, source, dest, weight):
+		if not source in self.vertices:
+			self.addVertex(source)
+
+		self.vertices[source][dest] = weight
 
 	@staticmethod
 	def areReasonableNeighbors(source, dest):
@@ -72,37 +78,32 @@ class StopGraph:
 
 	def formEdges(self, stops, botherLimit):
 		for i, source in enumerate(stops):
-			#print("%d of %d" % (i, len(stops)))
+			print("%d of %d" % (i, len(stops)))
 			for dest in stops:
-				if StopGraph.areReasonableNeighbors(source, dest):
+				if self.__class__.areReasonableNeighbors(source, dest):
 					dist = source.distanceTo(dest).km
-					self.vertices[source].addEdge(dest, dist)
+					self.addEdge(source, dest, dist)
 					#bother = Bother.getBother(source, dest)
 					#if bother.penalty < BOTHER_LIMIT:
 					#	self.vertices[source].addEdge(dest, bother)
 
-	def __str__(self):
-		return "\n".join([stop.name + "\n" + self.vertices[stop].__str__() for stop in self.vertices.keys()])
-
-
-class Vertex:
-	def __init__(self):
-		self.edges = {}
-
-	def addEdge(self, dest, bother):
-		self.edges[dest] = bother
+	def neighborString(self, source):
+		edges = self.vertices[source]
+		form = "\t%.1f km: %s"
+		return "\n".join([form % (edges[n], n.name) for n in edges.keys()])
 
 	def __str__(self):
-		form = "\t%02.1f km: %s\n"
-		return "".join([form % (self.edges[x], x.name) for x in self.edges.keys()])
+		verts = self.vertices.keys()
+		form = "%s\n%s\n"
+		return "\n".join([form % (v.name, self.neighborString(v)) for v in verts])
 
 def main():
 	import datetime
 
 	sched = schedule.Schedule()
 	sched.loadSchedule(schedule.RAIL_PATH)
-
-	graph = StopGraph()
+	print("----schedule loaded----")
+	graph = Graph()
 	date = datetime.date(2016, 10, 5)
 	#for stopTime in sched.getStopTimes(date):
 	#	graph.addVertex(stopTime)
