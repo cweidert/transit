@@ -25,6 +25,7 @@ class Schedule:
 		self.loadTrips(path) # depends on services
 		self.loadStops(path)
 		self.loadStopTimes(path) # depends on stops & trips
+		self.attachStopsToRoutes()
 
 	def loadExceptionServices(self, path):
 		path += "/calendar_dates.txt"
@@ -136,6 +137,10 @@ class Schedule:
 			self.routes[route_id] = route
 		f.close()
 
+	def attachStopsToRoutes(self):
+		for stop in self.stops.values():
+			stop.computeRoutes()
+
 	def getServices(self, date):
 		return [s for s in self.services.values() if s.includes(date)]
 
@@ -191,6 +196,7 @@ class Stop:
 		self.stop_id = stop_id
 		self.name = name
 		self.parent_id = parent
+		self.routes = {}
 		self.stopTimes = {}
 
 	@property
@@ -204,6 +210,9 @@ class Stop:
 	def distanceTo(self, other):
 		return self.location.distanceTo(other.location)
 
+	def addRoute(self, route):
+		self.routes[route.route_id] = route
+
 	def addStopTime(self, stopTime):
 		self.stopTimes[stopTime.stopTime_id] = stopTime
 
@@ -216,20 +225,31 @@ class Stop:
 			trips.add(stopTime.trip)
 		return trips
 
+	def computeRoutes(self):
+		for route in set([trip.route for trip in self.getTrips()]):
+			self.addRoute(route)
+			route.addStop(self)
+
 	def getCommonTrips(self, other):
 		return self.getTrips() & other.getTrips()
 
 	def onSameRoute(self, other):
-		return len(getCommonTrips()) > 0
+		return len(set(self.routes.keys()) & set(other.routes.keys())) > 0
 
 	def isNeighboringStop(self, other):
+		if not self.onSameRoute(other):
+			return False
+
 		trips = list(self.getCommonTrips(other))
 		if len(trips) < 1:
 			return False
 		else:
+			# pick any trip we have in common
 			trip = trips[0]
+			# get our stops on that trip
 			myTimes = [st for st in self.stopTimes.values() if st.trip == trip]
 			otherTimes = [st for st in other.stopTimes.values() if st.trip == trip]
+			# see if any of those stops on that trip are next to each other
 			for mine in myTimes:
 				for yours in otherTimes:
 					if abs(mine.seq - yours.seq) <= 1:
@@ -351,9 +371,13 @@ class Route:
 		self.route_id = route_id
 		self.name = name
 		self.trips = {}
+		self.stops = {}
 
 	def addTrip(self, trip):
 		self.trips[trip.trip_id] = trip
+
+	def addStop(self, stop):
+		self.stops[stop.stop_id] = stop
 
 	def __str__(self):
 		return "%s" % self.name
