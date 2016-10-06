@@ -116,10 +116,11 @@ def main():
 	import sys
 	sched = schedule.Schedule()
 	sched.loadSchedule(schedule.RAIL_PATH)
-	sched.finish()
 	print("----rail loaded----")
 	#sched.loadSchedule(schedule.BUS_PATH)
 	#print("----buses loaded----")
+	sched.finish()
+	print("----schedule processed----")
 	graph = StopGraph()
 	date = datetime.date(2016, 10, 5)
 
