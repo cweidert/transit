@@ -13,7 +13,7 @@ class Schedule:
 		self.services = {}
 		self.routes = {}
 		self.stops = {}
-		self.stopTimes = {}
+		self.stopTimes = set()
 		self.trips = {}
 		#self.shapes = {}
 
@@ -72,7 +72,6 @@ class Schedule:
 		path = path + "/stop_times.txt"
 		f = open(path, 'r')
 		f.readline()
-		count = 0
 		for line in f:
 			words = line.split(",")
 			trip_id = words[0]
@@ -83,11 +82,10 @@ class Schedule:
 			seq = int(words[4])
 			headsign = words[5]
 			stop = self.stops[stop_id]
-			stopTime = StopTime(count, trip, stop, seq, headsign, arr, dep)
+			stopTime = StopTime(trip, stop, seq, headsign, arr, dep)
 			stop.addStopTime(stopTime)
 			trip.addStopTime(stopTime)
-			self.stopTimes[count] = stopTime
-			count += 1
+			self.stopTimes.add(stopTime)
 		f.close()
 
 	def loadStops(self, path):
@@ -155,7 +153,7 @@ class Schedule:
 		trips = self.getTrips(date)
 		toRet = []
 		for trip in trips:
-			toRet.extend(trip.stops)
+			toRet.extend(trip.stopTimes)
 		return toRet
 
 	def getStops(self, date):
@@ -197,7 +195,7 @@ class Stop:
 		self.name = name
 		self.parent_id = parent
 		self.routes = {}
-		self.stopTimes = {}
+		self.stopTimes = set()
 
 	@property
 	def latitude(self):
@@ -214,14 +212,14 @@ class Stop:
 		self.routes[route.route_id] = route
 
 	def addStopTime(self, stopTime):
-		self.stopTimes[stopTime.stopTime_id] = stopTime
+		self.stopTimes.add(stopTime)
 
 	def isMainStop(self):
 		return self.parent_id is None
 
 	def getTrips(self):
 		trips = set()
-		for stopTime in self.stopTimes.values():
+		for stopTime in self.stopTimes:
 			trips.add(stopTime.trip)
 		return trips
 
@@ -237,19 +235,14 @@ class Stop:
 		return len(set(self.routes.keys()) & set(other.routes.keys())) > 0
 
 	def isNeighboringStop(self, other):
-		if not self.onSameRoute(other):
-			return False
 
 		trips = list(self.getCommonTrips(other))
 		if len(trips) < 1:
 			return False
 		else:
-			# pick any trip we have in common
 			trip = trips[0]
-			# get our stops on that trip
-			myTimes = [st for st in self.stopTimes.values() if st.trip == trip]
-			otherTimes = [st for st in other.stopTimes.values() if st.trip == trip]
-			# see if any of those stops on that trip are next to each other
+			myTimes = [st for st in self.stopTimes if st.trip == trip]
+			otherTimes = [st for st in other.stopTimes if st.trip == trip]
 			for mine in myTimes:
 				for yours in otherTimes:
 					if abs(mine.seq - yours.seq) <= 1:
@@ -261,8 +254,7 @@ class Stop:
 		return "Stop %s @ %s: %s" % values
 
 class StopTime:
-	def __init__(self, stopTime_id, trip, stop, seq, headsign, arrival, departure):
-		self.stopTime_id = stopTime_id
+	def __init__(self, trip, stop, seq, headsign, arrival, departure):
 		self.trip = trip
 		self.stop = stop
 		self.seq = seq
@@ -314,24 +306,18 @@ class Trip:
 		self.route = route
 		self.service = service
 		self.shape_id = shape_id
-		self.stopTimes = {}
+		self.stopTimes = set()
 
 	def addStopTime(self, stopTime):
-		self.stopTimes[stopTime.stopTime_id] = stopTime
-
-	@property
-	def stops(self):
-		stops = list(self.stopTimes.values())
-		stops.sort(key = lambda x: x.seq)
-		return stops
+		self.stopTimes.add(stopTime)
 
 	@property
 	def firstStop(self):
-		return min(self.stopTimes.values(), key = lambda x : x.seq)
+		return min(self.stopTimes, key = lambda x : x.seq)
 
 	@property
 	def lastStop(self):
-		return max(self.stopTimes.values(), key = lambda x : x.seq)
+		return max(self.stopTimes, key = lambda x : x.seq)
 
 	@property
 	def originName(self):

@@ -81,12 +81,17 @@ class StopGraph(Graph):
 
 	@staticmethod
 	def areReasonableNeighbors(source, dest):
-		if source is not dest:
+		if source is dest:
+			return False
+
+		if source.onSameRoute(dest):
+			if source.isNeighboringStop(dest):
+				return True
+		else:
 			dist = source.distanceTo(dest).km
 			if (dist < TRANSFER_DISTANCE_LIMIT):
 				return True
-			if source.isNeighboringStop(dest):
-				return True
+
 		return False
 
 
@@ -111,7 +116,9 @@ def main():
 
 	sched = schedule.Schedule()
 	sched.loadSchedule(schedule.RAIL_PATH)
-	print("----schedule loaded----")
+	print("----rail loaded----")
+	#sched.loadSchedule(schedule.BUS_PATH)
+	#print("----buses loaded----")
 	graph = StopGraph()
 	date = datetime.date(2016, 10, 5)
 
