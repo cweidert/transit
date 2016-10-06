@@ -10,11 +10,6 @@ BUS_PATH = "../data/metro/gtfs/bus"
 class Schedule:
 	def __init__(self):
 		#self.agencies = {}
-<<<<<<< HEAD
-=======
-		#self.calendarDates = {}
-		#self.calendars = {}
->>>>>>> c2ed7a7d00df8fbd194c12ec993aa2f6bc81c3b2
 		self.services = {}
 		self.routes = {}
 		self.stops = {}
@@ -25,16 +20,12 @@ class Schedule:
 
 	def loadSchedule(self, path):
 		self.loadServices(path)
-<<<<<<< HEAD
 		self.loadExceptionServices(path)
-=======
->>>>>>> c2ed7a7d00df8fbd194c12ec993aa2f6bc81c3b2
 		self.loadRoutes(path)
 		self.loadTrips(path) # depends on services
 		self.loadStops(path)
 		self.loadStopTimes(path) # depends on stops & trips
 
-<<<<<<< HEAD
 	def loadExceptionServices(self, path):
 		path += "/calendar_dates.txt"
 		f = open(path, 'r')
@@ -48,8 +39,6 @@ class Schedule:
 			self.services[service_id] = service
 		f.close()
 
-=======
->>>>>>> c2ed7a7d00df8fbd194c12ec993aa2f6bc81c3b2
 	def loadServices(self, path):
 		path += "/calendar.txt"
 		f = open(path, 'r')
@@ -62,7 +51,6 @@ class Schedule:
 			service = Service(service_id, start_date, end_date)
 			self.services[service_id] = service
 		f.close()
-<<<<<<< HEAD
 
 	def loadStops(self, path):
 		path = path + "/stops.txt"
@@ -78,8 +66,6 @@ class Schedule:
 			stop = Stop(stop_id, name, lat, lng, parent_id)
 			self.stops[stop_id] = stop
 		f.close()
-=======
->>>>>>> c2ed7a7d00df8fbd194c12ec993aa2f6bc81c3b2
 
 	def loadStopTimes(self, path):
 		path = path + "/stop_times.txt"
@@ -103,8 +89,6 @@ class Schedule:
 			count += 1
 		f.close()
 
-<<<<<<< HEAD
-=======
 	def loadStops(self, path):
 		path = path + "/stops.txt"
 		f = open(path, 'r')
@@ -120,7 +104,6 @@ class Schedule:
 			self.stops[stop_id] = stop
 		f.close()
 
->>>>>>> c2ed7a7d00df8fbd194c12ec993aa2f6bc81c3b2
 	def loadTrips(self, path):
 		path = path + "/trips.txt"
 		f = open(path, 'r')
@@ -170,7 +153,6 @@ class Schedule:
 			toRet.extend(trip.stops)
 		return toRet
 
-<<<<<<< HEAD
 	def getStops(self, date):
 		stops = set()
 		stopTimes = self.getStopTimes(date)
@@ -178,8 +160,6 @@ class Schedule:
 			stops.add(st.stop)
 		return list(stops)
 
-=======
->>>>>>> c2ed7a7d00df8fbd194c12ec993aa2f6bc81c3b2
 class Service:
 	def __init__(self, service_id, start_date, end_date):
 		self.service_id = service_id
@@ -271,7 +251,6 @@ class StopTime:
 		self.departureTime = Time.fromString(departure)
 
 	@property
-<<<<<<< HEAD
 	def latitude(self):
 		return self.stop.latitude
 
@@ -280,8 +259,6 @@ class StopTime:
 		return self.stop.longitude
 
 	@property
-=======
->>>>>>> c2ed7a7d00df8fbd194c12ec993aa2f6bc81c3b2
 	def stopName(self):
 		return self.stop.name
 

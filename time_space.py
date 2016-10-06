@@ -90,7 +90,6 @@ class Place:
 		self.lat = lat;
 		self.lon = lon;
 
-<<<<<<< HEAD
 	@property
 	def latitude(self):
 		return self.lat
@@ -99,8 +98,6 @@ class Place:
 	def longitude(self):
 		return self.lon
 
-=======
->>>>>>> c2ed7a7d00df8fbd194c12ec993aa2f6bc81c3b2
 	def distanceTo(self, other):
 		loc1 = (self.lat, self.lon)
 		loc2 = (other.lat, other.lon)
