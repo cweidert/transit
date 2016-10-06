@@ -1,11 +1,10 @@
 #!/usr/bin/env python
 
+import math
 from geopy.geocoders import Nominatim
 from geopy.distance import vincenty
 
-TRANSFER_PENALTY = 20
 WALKING_KM_PER_HOUR = 5
-MINUTE_PENALTY_PER_TRANSFER = 20
 
 class Finder:
 	@staticmethod
@@ -38,6 +37,14 @@ class Time:
 		secs = seconds + minutes * 60 + hours * 60 * 60
 		self.secs = secs
 
+	@classmethod
+	def fromString(cls, strang):
+		words = strang.split(":")
+		hours = int(words[0])
+		minutes = int(words[1])
+		seconds = int(words[2])
+		return cls(hours, minutes, seconds)
+
 	@property
 	def seconds(self):
 		return self.secs
@@ -56,14 +63,27 @@ class Time:
 	def plus(self, other):
 		return Time(seconds = (self.secs + other.secs))
 
+	def before(self, other):
+		return self.diff(other).seconds < 0
+
+	def after(self, other):
+		return self.diff(other).seconds > 0
+
 	def __str__(self):
 		tot = self.secs
-		hours = tot // (60 * 60)
-		tot -= hours * 60 * 60
+		negative = False
+		if (tot < 0):
+			tot = -tot
+			negative = True
+		hours = tot // 3600
+		tot %= 3600
 		minutes = tot // 60
-		tot -= minutes * 60
+		tot %= 60
 		seconds = tot
-		return "%02d:%02d:%02d" % (hours, minutes, seconds)
+		s = "%02d:%02d:%02d" % (hours, minutes, seconds)
+		if negative:
+			s = "-" + s
+		return s
 
 class Place:
 	def __init__(self, lat, lon):
@@ -71,13 +91,17 @@ class Place:
 		self.lon = lon;
 
 	@property
-	def location(self):
-		return (self.lat, self.lon)
+	def latitude(self):
+		return self.lat
+
+	@property
+	def longitude(self):
+		return self.lon
 
 	def distanceTo(self, other):
 		loc1 = (self.lat, self.lon)
 		loc2 = (other.lat, other.lon)
-		return vincenty(loc1, loc2).km
+		return Distance(vincenty(loc1, loc2).km)
 
 	def __str__(self):
 		return "(%.3f, %.3f)" % (self.lat, self.lon)
@@ -108,14 +132,6 @@ class Travel:
 
 	def __str__(self):
 		return "%.3f km, %.1f min" % (self.distance.km, self.duration.minutes)
-
-class Bother:
-	def __init__(self, time, transfers = 0):
-		self.time = time
-		self.transfers = transfers
-
-	def penalty(self):
-		return self.time.minutes + self.transfers * TIME_PENALTY_PER_TRANSFER
 
 def main():
 	lacmaBrunch = TimePlace(Finder.findLatLon("Los Angeles County Museum of Art"), 8, 0)
