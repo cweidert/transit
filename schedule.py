@@ -10,12 +10,12 @@ BUS_PATH = "../data/metro/gtfs/bus"
 class Schedule:
 	def __init__(self):
 		#self.agencies = {}
+		#self.shapes = {}
 		self.services = {}
 		self.routes = {}
 		self.stops = {}
 		self.stopTimes = set()
 		self.trips = {}
-		#self.shapes = {}
 
 
 	def loadSchedule(self, path):
@@ -25,7 +25,11 @@ class Schedule:
 		self.loadTrips(path) # depends on services
 		self.loadStops(path)
 		self.loadStopTimes(path) # depends on stops & trips
-		self.attachStopsToRoutes()
+
+	def finish(self):
+		self.computeChildren()
+		self.finishAll()
+
 
 	def loadExceptionServices(self, path):
 		path += "/calendar_dates.txt"
@@ -83,8 +87,6 @@ class Schedule:
 			headsign = words[5]
 			stop = self.stops[stop_id]
 			stopTime = StopTime(trip, stop, seq, headsign, arr, dep)
-			stop.addStopTime(stopTime)
-			trip.addStopTime(stopTime)
 			self.stopTimes.add(stopTime)
 		f.close()
 
@@ -116,8 +118,6 @@ class Schedule:
 			trip_id = words[2]
 			shape_id = words[6]
 			trip = Trip(trip_id, route, service, shape_id)
-			service.addTrip(trip)
-			route.addTrip(trip)
 			self.trips[trip_id] = trip
 		f.close()
 
@@ -135,47 +135,63 @@ class Schedule:
 			self.routes[route_id] = route
 		f.close()
 
-	def attachStopsToRoutes(self):
+
+	def computeChildren(self):
+		for stopTime in self.stopTimes:
+			stop = stopTime.stop
+			trip = stopTime.trip
+			route = trip.route
+			service = trip.service
+			stop.addStopTime(stopTime)
+			trip.addStopTime(stopTime)
+			route.addTrip(trip)
+			service.addTrip(trip)
+
+	def finishAll(self):
+		for trip in self.trips.values():
+			trip.finish()
+		for route in self.routes.values():
+			route.finish()
 		for stop in self.stops.values():
-			stop.computeRoutes()
+			stop.finish()
+
 
 	def getServices(self, date):
 		return [s for s in self.services.values() if s.includes(date)]
 
 	def getTrips(self, date):
 		services = self.getServices(date)
-		trips = []
-		for service in services:
-			trips.extend(service.trips.values())
-		return trips
+		trips = self.trips.values()
+		return [t for t in trips if t.service in services]
 
 	def getStopTimes(self, date):
 		trips = self.getTrips(date)
-		toRet = []
-		for trip in trips:
-			toRet.extend(trip.stopTimes)
-		return toRet
+		return [st for st in self.stopTimes if st.trip in trips]
 
 	def getStops(self, date):
-		stops = set()
-		stopTimes = self.getStopTimes(date)
-		for st in stopTimes:
-			stops.add(st.stop)
-		return list(stops)
+		trips = self.getTrips(date)
+		stops = self.stops.values()
+		toRet = []
+		for stop in stops:
+			for stopTime in stop.stopTimes:
+				if stopTime.trip in trips:
+					toRet.append(stop)
+					break
+		return toRet
 
 class Service:
-	def __init__(self, service_id, start_date, end_date):
-		self.service_id = service_id
-		self.start = Service.getDate(start_date)
-		self.finish = Service.getDate(end_date)
-		self.trips = {}
-
 	@staticmethod
 	def getDate(s):
 		year = int(s[0:4])
 		month = int(s[4:6])
 		day = int(s[6:8])
 		return Date(year, month, day)
+
+	def __init__(self, service_id, start_date, end_date):
+		self.service_id = service_id
+		self.start = Service.getDate(start_date)
+		self.finish = Service.getDate(end_date)
+		self.trips = {}
 
 	def addTrip(self, trip):
 		self.trips[trip.trip_id] = trip
@@ -188,117 +204,21 @@ class Service:
 	def __str__(self):
 		return self.start.__str__() + " - " + self.finish.__str__()
 
-class Stop:
-	def __init__(self, stop_id, name, lat, lon, parent = None):
-		self.location = Place(lat, lon)
-		self.stop_id = stop_id
+class Route:
+	def __init__(self, route_id, name):
+		self.route_id = route_id
 		self.name = name
-		self.parent_id = parent
-		self.routes = {}
-		self.stopTimes = set()
+		self.trips = []
 
-	@property
-	def latitude(self):
-		return self.location.latitude
+	def addTrip(self, trip):
+		if not trip in self.trips:
+			self.trips.append(trip)
 
-	@property
-	def longitude(self):
-		return self.location.longitude
-
-	def distanceTo(self, other):
-		return self.location.distanceTo(other.location)
-
-	def addRoute(self, route):
-		self.routes[route.route_id] = route
-
-	def addStopTime(self, stopTime):
-		self.stopTimes.add(stopTime)
-
-	def isMainStop(self):
-		return self.parent_id is None
-
-	def getTrips(self):
-		trips = set()
-		for stopTime in self.stopTimes:
-			trips.add(stopTime.trip)
-		return trips
-
-	def computeRoutes(self):
-		for route in set([trip.route for trip in self.getTrips()]):
-			self.addRoute(route)
-			route.addStop(self)
-
-	def getCommonTrips(self, other):
-		return self.getTrips() & other.getTrips()
-
-	def onSameRoute(self, other):
-		return len(set(self.routes.keys()) & set(other.routes.keys())) > 0
-
-	def isNeighboringStop(self, other):
-
-		trips = list(self.getCommonTrips(other))
-		if len(trips) < 1:
-			return False
-		else:
-			trip = trips[0]
-			myTimes = [st for st in self.stopTimes if st.trip == trip]
-			otherTimes = [st for st in other.stopTimes if st.trip == trip]
-			for mine in myTimes:
-				for yours in otherTimes:
-					if abs(mine.seq - yours.seq) <= 1:
-						return True
-			return False
+	def finish(self):
+		self.trips.sort(key = lambda x: x.startTime.seconds)
 
 	def __str__(self):
-		values = (self.stop_id, self.location.__str__(), self.name)
-		return "Stop %s @ %s: %s" % values
-
-class StopTime:
-	def __init__(self, trip, stop, seq, headsign, arrival, departure):
-		self.trip = trip
-		self.stop = stop
-		self.seq = seq
-		self.headsign = headsign
-		self.arrivalTime = Time.fromString(arrival)
-		self.departureTime = Time.fromString(departure)
-
-	@property
-	def latitude(self):
-		return self.stop.latitude
-
-	@property
-	def longitude(self):
-		return self.stop.longitude
-
-	@property
-	def stopName(self):
-		return self.stop.name
-
-	@property
-	def location(self):
-		return self.stop.location
-
-	@property
-	def lat(self):
-		return self.location.lat
-
-	@property
-	def lon(self):
-		return self.location.lon
-
-	def onSameTrip(self, other):
-		return self.trip == other.trip
-
-	def __str__(self):
-		arrive = self.arrivalTime
-		depart = self.departureTime
-		stopName = self.stop.name
-		seq = self.seq
-		routeName = self.trip.route.name
-		headsign = self.headsign
-		loc = self.location
-		values = (routeName, headsign, seq, arrive, loc, stopName)
-		return "%s --> %s \n  [Stop #%2d @ %s]: %s %s" % values
+		return "%s" % self.name
 
 class Trip:
 	def __init__(self, trip_id, route, service, shape_id):
@@ -306,26 +226,33 @@ class Trip:
 		self.route = route
 		self.service = service
 		self.shape_id = shape_id
-		self.stopTimes = set()
+		self.stops = []
+		self.stopTimes = []
 
 	def addStopTime(self, stopTime):
-		self.stopTimes.add(stopTime)
+		if not stopTime in self.stopTimes:
+			self.stopTimes.append(stopTime)
+
+	def finish(self):
+		self.stopTimes.sort(key = lambda x : x.seq)
+		for stopTime in self.stopTimes:
+			self.stops.append(stopTime.stop)
 
 	@property
 	def firstStop(self):
-		return min(self.stopTimes, key = lambda x : x.seq)
+		return self.stopTimes[0]
 
 	@property
 	def lastStop(self):
-		return max(self.stopTimes, key = lambda x : x.seq)
+		return self.stopTimes[-1]
 
 	@property
 	def originName(self):
-		return self.firstStop.stopName
+		return self.firstStop.stop.name
 
 	@property
 	def destinationName(self):
-		return self.lastStop.stopName
+		return self.lastStop.stop.name
 
 	@property
 	def startTime(self):
@@ -343,6 +270,12 @@ class Trip:
 	def routeName(self):
 		return self.route.__str__()
 
+	# assumes that stop times are always numbered starting with one
+	def nextStopTime(self, stopTime):
+		if stopTime.seq >= len(self.stopTimes):
+			return None
+		return self.stopTimes[stopTime.seq]
+
 	def __str__(self):
 		lineName = self.routeName
 		start = self.startTime
@@ -352,25 +285,86 @@ class Trip:
 		values = (lineName, start, origin, finish, destination)
 		return "%s \n\t(%s %s -> %s %s)" % values
 
-class Route:
-	def __init__(self, route_id, name):
-		self.route_id = route_id
+class Stop:
+	def __init__(self, stop_id, name, lat, lon, parent = None):
+		self.location = Place(lat, lon)
+		self.stop_id = stop_id
 		self.name = name
-		self.trips = {}
-		self.stops = {}
+		self.parent_id = parent
+		self.stopTimes = []
+		self.routes = set()
 
-	def addTrip(self, trip):
-		self.trips[trip.trip_id] = trip
+	def addStopTime(self, stopTime):
+		if not stopTime in self.stopTimes:
+			self.stopTimes.append(stopTime)
+			self.routes.add(stopTime.trip.route)
 
-	def addStop(self, stop):
-		self.stops[stop.stop_id] = stop
+	def finish(self):
+		self.stopTimes.sort(key = lambda x: x.arrivalTime.seconds)
+
+	@property
+	def latitude(self):
+		return self.location.latitude
+
+	@property
+	def longitude(self):
+		return self.location.longitude
+
+	def distanceTo(self, other):
+		return self.location.distanceTo(other.location)
+
+	def isMainStop(self):
+		return self.parent_id is None
+
+	def onSameRoute(self, other):
+		return len(self.routes & other.routes) > 0
+
+	def isNeighboringStop(self, other):
+		if not self.onSameRoute(other):
+			return False
+
+		for stopTime in self.stopTimes:
+			nextStopTime = stopTime.trip.nextStopTime(stopTime)
+			if nextStopTime is not None:
+				nextStop = nextStopTime.stop
+				if nextStop is other:
+					return True
+		return False
 
 	def __str__(self):
-		return "%s" % self.name
+		values = (self.stop_id, self.location.__str__(), self.name)
+		return "Stop %s @ %s: %s" % values
+
+class StopTime:
+	def __init__(self, trip, stop, seq, headsign, arrival, departure):
+		self.trip = trip
+		self.stop = stop
+		self.seq = seq
+		self.headsign = headsign
+		self.arrivalTime = Time.fromString(arrival)
+		self.departureTime = Time.fromString(departure)
+
+	def onSameTrip(self, other):
+		return self.trip is other.trip
+
+	def __str__(self):
+		arrive = self.arrivalTime
+		depart = self.departureTime
+		stopName = self.stop.name
+		seq = self.seq
+		routeName = self.trip.route.name
+		headsign = self.headsign
+		loc = self.location
+		values = (routeName, headsign, seq, arrive, loc, stopName)
+		return "%s --> %s \n  [Stop #%2d @ %s]: %s %s" % values
+
+
+
 
 def main():
 	sched = Schedule()
 	sched.loadSchedule(RAIL_PATH)
+	sched.finish()
 
 	date = Date(2016, 10, 5)
 	trips = sched.getTrips(date)
